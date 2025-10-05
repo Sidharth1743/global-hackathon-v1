@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+
+{% block title %}Global Leaderboard - Neo4j Learning Platform{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="fas fa-trophy me-2 text-warning"></i>Global Leaderboard</h1>
+        <p class="text-muted">Compete with learners worldwide and climb the ranks!</p>
+    </div>
+</div>
+
+<!-- Leaderboard Tabs -->
+<div class="row mb-4">
+    <div class="col-12">
+        <ul class="nav nav-pills nav-fill" id="leaderboard-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="all-time-tab" data-bs-toggle="pill" data-bs-target="#all-time" type="button" role="tab">
+                    <i class="fas fa-infinity me-2"></i>All Time
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="weekly-tab" data-bs-toggle="pill" data-bs-target="#weekly" type="button" role="tab">
+                    <i class="fas fa-calendar-week me-2"></i>This Week
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="achievements-tab" data-bs-toggle="pill" data-bs-target="#achievements" type="button" role="tab">
+                    <i class="fas fa-medal me-2"></i>Top Achievers
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="collaboration-tab" data-bs-toggle="pill" data-bs-target="#collaboration" type="button" role="tab">
+                    <i class="fas fa-handshake me-2"></i>Collaboration
+                </button>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="tab-content" id="leaderboard-content">
+            <!-- All Time Leaderboard -->
+            <div class="tab-pane fade show active" id="all-time" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5><i class="fas fa-crown me-2"></i>Hall of Fame</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="all-time-leaderboard">
+                            <div class="text-center p-4">
+                                <div class="spinner-border text-warning"></div>
+                                <p class="mt-2">Loading champions...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Weekly Leaderboard -->
+            <div class="tab-pane fade" id="weekly" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-fire me-2"></i>This Week's Heroes</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="weekly-leaderboard">
+                            <div class="text-center p-4">
+                                <div class="spinner-border text-success"></div>
+                                <p class="mt-2">Loading weekly stats...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Achievements Leaderboard -->
+            <div class="tab-pane fade" id="achievements" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-star me-2"></i>Achievement Masters</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="achievements-leaderboard">
+                            <div class="text-center p-4">
+                                <div class="spinner-border text-info"></div>
+                                <p class="mt-2">Loading achievement data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Collaboration Leaderboard -->
+            <div class="tab-pane fade" id="collaboration" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5><i class="fas fa-users me-2"></i>Collaboration Champions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="collaboration-leaderboard">
+                            <div class="text-center p-4">
+                                <div class="spinner-border text-primary"></div>
+                                <p class="mt-2">Loading collaboration stats...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Your Rank -->
+        <div class="card mb-3">
+            <div class="card-header bg-gradient-primary text-white">
+                <h6><i class="fas fa-user me-2"></i>Your Performance</h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <h2 class="text-primary" id="user-rank">#-</h2>
+                    <p class="text-muted">Global Rank</p>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <h4 class="text-success" id="user-points">-</h4>
+                        <small class="text-muted">Total XP</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-warning" id="user-level">-</h4>
+                        <small class="text-muted">Level</small>
+                    </div>
+                </div>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-primary" id="rank-progress" style="width: 0%"></div>
+                </div>
+                <small class="text-muted">Progress to next rank</small>
+            </div>
+        </div>
+        
+        <!-- Weekly Challenge -->
+        <div class="card mb-3">
+            <div class="card-header bg-gradient-warning text-dark">
+                <h6><i class="fas fa-target me-2"></i>Weekly Challenge</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-rocket fa-3x text-warning"></i>
+                    <h5 class="mt-2">Speed Learning</h5>
+                    <p class="small text-muted">Complete 5 concepts this week</p>
+                </div>
+                <div class="progress mb-2" style="height: 10px;">
+                    <div class="progress-bar bg-warning" id="challenge-progress" style="width: 60%"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <small>3/5 completed</small>
+                    <small class="text-warning">🏆 500 XP</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Achievements -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-medal me-2"></i>Rare Achievements</h6>
+            </div>
+            <div class="card-body">
+                <div class="achievement-showcase">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-warning fs-6 me-2">🏆</span>
+                        <div>
+                            <small class="fw-bold">Master Learner</small>
+                            <br><small class="text-muted">Only 5% have this</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-info fs-6 me-2">🤖</span>
+                        <div>
+                            <small class="fw-bold">AI Whisperer</small>
+                            <br><small class="text-muted">12% earned</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-success fs-6 me-2">🔥</span>
+                        <div>
+                            <small class="fw-bold">Streak Master</small>
+                            <br><small class="text-muted">8% earned</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-bolt me-2"></i>Boost Your Rank</h6>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm w-100 mb-2" onclick="startSpeedChallenge()">
+                    <i class="fas fa-stopwatch me-1"></i>Speed Challenge
+                </button>
+                <button class="btn btn-success btn-sm w-100 mb-2" onclick="joinStudyGroup()">
+                    <i class="fas fa-users me-1"></i>Join Study Group
+                </button>
+                <button class="btn btn-warning btn-sm w-100" onclick="shareProgress()">
+                    <i class="fas fa-share me-1"></i>Share Progress
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary { background: linear-gradient(45deg, #007bff, #0056b3); }
+.bg-gradient-warning { background: linear-gradient(45deg, #ffc107, #e0a800); }
+
+.leaderboard-item {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.leaderboard-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.rank-1 { border-left: 5px solid #ffd700; }
+.rank-2 { border-left: 5px solid #c0c0c0; }
+.rank-3 { border-left: 5px solid #cd7f32; }
+
+.achievement-showcase .badge {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadLeaderboards();
+    loadUserStats();
+    
+    // Tab change handlers
+    document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            const target = e.target.getAttribute('data-bs-target');
+            if (target === '#weekly') {
+                loadWeeklyLeaderboard();
+            } else if (target === '#achievements') {
+                loadAchievementsLeaderboard();
+            } else if (target === '#collaboration') {
+                loadCollaborationLeaderboard();
+            }
+        });
+    });
+});
+
+async function loadLeaderboards() {
+    try {
+        await loadAllTimeLeaderboard();
+    } catch (error) {
+        console.error('Error loading leaderboards:', error);
+    }
+}
+
+async function loadAllTimeLeaderboard() {
+    try {
+        const response = await fetch('/api/leaderboard?timeframe=all_time');
+        const data = await response.json();
+        
+        displayLeaderboard(data, 'all-time-leaderboard');
+    } catch (error) {
+        console.error('Error loading all-time leaderboard:', error);
+        document.getElementById('all-time-leaderboard').innerHTML = 
+            '<div class="text-center p-4"><p class="text-danger">Error loading leaderboard</p></div>';
+    }
+}
+
+async function loadWeeklyLeaderboard() {
+    try {
+        const response = await fetch('/api/leaderboard?timeframe=weekly');
+        const data = await response.json();
+        
+        displayLeaderboard(data, 'weekly-leaderboard');
+    } catch (error) {
+        console.error('Error loading weekly leaderboard:', error);
+    }
+}
+
+function displayLeaderboard(data, containerId) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-center p-4"><p class="text-muted">No data available</p></div>';
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    
+    data.forEach((user, index) => {
+        const rank = index + 1;
+        const rankClass = rank <= 3 ? `rank-${rank}` : '';
+        const crownIcon = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+        
+        html += `
+            <div class="list-group-item leaderboard-item ${rankClass}">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 text-center" style="min-width: 50px;">
+                        <h4 class="mb-0">${crownIcon || '#' + rank}</h4>
+                    </div>
+                    <div class="me-3">
+                        <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 50px; height: 50px;">
+                            ${(user.name || 'User').charAt(0).toUpperCase()}
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${user.name || 'Anonymous User'}</h6>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-warning me-2">${user.points || 0} XP</span>
+                            <span class="badge bg-info me-2">Level ${user.level || 1}</span>
+                            <small class="text-muted">${user.completions || 0} concepts</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        ${rank <= 3 ? '<span class="badge bg-success">Top 3</span>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function loadAchievementsLeaderboard() {
+    // Simulate achievements leaderboard
+    const achievementsData = [
+        { name: 'Alex Chen', achievements: 15, rarest: 'Master Learner', points: 2500 },
+        { name: 'Sarah Johnson', achievements: 12, rarest: 'AI Whisperer', points: 2200 },
+        { name: 'Mike Rodriguez', achievements: 11, rarest: 'Streak Master', points: 2100 },
+        { name: 'Emma Wilson', achievements: 10, rarest: 'Speed Demon', points: 1900 },
+        { name: 'David Kim', achievements: 9, rarest: 'Collaboration Champion', points: 1800 }
+    ];
+    
+    let html = '<div class="row">';
+    
+    achievementsData.forEach((user, index) => {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-2">
+                            <span class="badge bg-warning fs-5">#${index + 1}</span>
+                        </div>
+                        <h6>${user.name}</h6>
+                        <div class="mb-2">
+                            <span class="badge bg-success">${user.achievements} achievements</span>
+                        </div>
+                        <p class="small text-muted">Rarest: <strong>${user.rarest}</strong></p>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: ${(user.achievements / 20) * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    document.getElementById('achievements-leaderboard').innerHTML = html;
+}
+
+async function loadCollaborationLeaderboard() {
+    // Simulate collaboration leaderboard
+    const collaborationData = [
+        { name: 'Team Alpha', members: 8, sessions: 25, helped: 45 },
+        { name: 'Study Buddies', members: 6, sessions: 20, helped: 38 },
+        { name: 'Math Masters', members: 10, sessions: 18, helped: 32 },
+        { name: 'Probability Pros', members: 5, sessions: 15, helped: 28 },
+        { name: 'Stats Squad', members: 7, sessions: 12, helped: 22 }
+    ];
+    
+    let html = '<div class="row">';
+    
+    collaborationData.forEach((group, index) => {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-primary me-2">#${index + 1}</span>
+                            <h6 class="mb-0">${group.name}</h6>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted">Members</small>
+                                <div class="fw-bold">${group.members}</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Sessions</small>
+                                <div class="fw-bold">${group.sessions}</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Helped</small>
+                                <div class="fw-bold">${group.helped}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    document.getElementById('collaboration-leaderboard').innerHTML = html;
+}
+
+async function loadUserStats() {
+    try {
+        const response = await fetch('/api/user-stats');
+        const stats = await response.json();
+        
+        document.getElementById('user-rank').textContent = '#' + (Math.floor(Math.random() * 50) + 1);
+        document.getElementById('user-points').textContent = stats.total_points || 0;
+        document.getElementById('user-level').textContent = stats.level || 1;
+        
+        // Simulate rank progress
+        const rankProgress = Math.random() * 100;
+        document.getElementById('rank-progress').style.width = rankProgress + '%';
+        
+    } catch (error) {
+        console.error('Error loading user stats:', error);
+    }
+}
+
+// Action Functions
+function startSpeedChallenge() {
+    showAlert('Speed Challenge activated! Complete concepts quickly to earn bonus XP! ⚡', 'warning');
+}
+
+function joinStudyGroup() {
+    window.location.href = '/collaborate/groups';
+}
+
+function shareProgress() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'My Learning Progress',
+            text: 'Check out my progress on the Neo4j Learning Platform!',
+            url: window.location.href
+        });
+    } else {
+        // Fallback for browsers that don't support Web Share API
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            showAlert('Progress link copied to clipboard! 📋', 'success');
+        });
+    }
+}
+
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => alert.remove(), 4000);
+}
+</script>
+{% endblock %}

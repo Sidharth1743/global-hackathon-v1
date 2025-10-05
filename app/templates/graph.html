@@ -1,0 +1,719 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Graph - Neo4j Learning Platform{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <h1><i class="fas fa-sitemap me-2"></i>Interactive Knowledge Graph</h1>
+        <p class="text-muted">Explore MIT Statistics concepts and their relationships. Click nodes to learn more!</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Graph Controls -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-cogs me-2"></i>Controls</h6>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm w-100 mb-2" onclick="resetGraph()">
+                    <i class="fas fa-refresh me-1"></i>Reset View
+                </button>
+                <button class="btn btn-outline-secondary btn-sm w-100 mb-3" onclick="centerGraph()">
+                    <i class="fas fa-crosshairs me-1"></i>Center
+                </button>
+                
+                <h6>Legend:</h6>
+                <div class="mb-2">
+                    <span class="badge bg-success me-2">●</span>
+                    <small>Completed</small>
+                </div>
+                <div class="mb-2">
+                    <span class="badge bg-primary me-2">●</span>
+                    <small>Beginner</small>
+                </div>
+                <div class="mb-2">
+                    <span class="badge bg-warning me-2">●</span>
+                    <small>Intermediate</small>
+                </div>
+                <div class="mb-3">
+                    <span class="badge bg-danger me-2">●</span>
+                    <small>Advanced</small>
+                </div>
+                
+                <!-- Node Info Panel -->
+                <div class="border rounded p-2 bg-light">
+                    <h6>Selected Concept</h6>
+                    <div id="node-info">
+                        <p class="small text-muted">Click a concept to view details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Graph Visualization -->
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body p-0">
+                <div id="graph-container" style="height: 600px; position: relative;">
+                    <div class="text-center p-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading graph...</span>
+                        </div>
+                        <p class="mt-2">Loading knowledge graph...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.graph-node {
+    cursor: pointer;
+    stroke: #fff;
+    stroke-width: 2px;
+    transition: all 0.3s ease;
+}
+
+.graph-node:hover {
+    stroke-width: 3px;
+    r: 25px;
+}
+
+.graph-link {
+    stroke: #666;
+    stroke-width: 2px;
+    stroke-opacity: 0.6;
+    marker-end: url(#arrowhead);
+}
+
+.node-label {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    text-anchor: middle;
+    pointer-events: none;
+    fill: #333;
+    font-weight: bold;
+}
+
+.selected {
+    stroke: #ff6b35;
+    stroke-width: 4px;
+}
+</style>
+
+<script>
+let svg, simulation, nodes, links;
+let graphData = null;
+let width = 800, height = 600;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeGraph();
+    loadGraphData();
+});
+
+function initializeGraph() {
+    const container = document.getElementById('graph-container');
+    width = container.offsetWidth;
+    height = container.offsetHeight;
+    
+    // Clear existing content
+    container.innerHTML = '';
+    
+    svg = d3.select('#graph-container')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    // Add arrow marker
+    svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '-0 -5 10 10')
+        .attr('refX', 25)
+        .attr('refY', 0)
+        .attr('orient', 'auto')
+        .attr('markerWidth', 8)
+        .attr('markerHeight', 8)
+        .append('path')
+        .attr('d', 'M 0,-5 L 10 ,0 L 0,5')
+        .attr('fill', '#666');
+    
+    // Add zoom behavior
+    const zoom = d3.zoom()
+        .scaleExtent([0.5, 3])
+        .on('zoom', function(event) {
+            svg.select('.graph-group').attr('transform', event.transform);
+        });
+    
+    svg.call(zoom);
+    
+    // Create main group
+    const g = svg.append('g').attr('class', 'graph-group');
+}
+
+function loadGraphData() {
+    fetch('/api/graph')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Graph data loaded:', data);
+            if (!data.nodes || !Array.isArray(data.nodes)) {
+                throw new Error('Invalid graph data structure');
+            }
+            graphData = data;
+            renderGraph();
+        })
+        .catch(error => {
+            console.error('Error loading graph:', error);
+            document.getElementById('graph-container').innerHTML = 
+                '<div class="text-center p-5"><p class="text-danger">Error loading graph data: ' + error.message + '</p></div>';
+        });
+}
+
+function renderGraph() {
+    console.log('renderGraph called with data:', window.graphData);
+    
+    if (!window.graphData) {
+        console.error('Invalid graph data: null or undefined');
+        document.getElementById('graph-container').innerHTML = 
+            '<div class="text-center p-5"><p class="text-danger">Graph data not loaded. Please refresh the page.</p></div>';
+        return;
+    }
+    
+    const graphData = window.graphData;
+    
+    if (!graphData.nodes || !Array.isArray(graphData.nodes)) {
+        console.error('Invalid graph data structure:', graphData);
+        document.getElementById('graph-container').innerHTML = 
+            '<div class="text-center p-5"><p class="text-danger">Invalid graph data structure.</p></div>';
+        return;
+    }
+    
+    if (graphData.nodes.length === 0) {
+        document.getElementById('graph-container').innerHTML = 
+            '<div class="text-center p-5"><p class="text-warning">No concepts available to display.</p></div>';
+        return;
+    }
+    
+    console.log(`Rendering graph with ${graphData.nodes.length} nodes and ${graphData.edges?.length || 0} edges`);
+    
+    const g = svg.select('.graph-group');
+    g.selectAll('*').remove();
+    
+    // Create simulation
+    simulation = d3.forceSimulation(graphData.nodes)
+        .force('link', d3.forceLink(graphData.edges).id(d => d.id).distance(120))
+        .force('charge', d3.forceManyBody().strength(-400))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(35));
+    
+    // Create links
+    const link = g.selectAll('.graph-link')
+        .data(graphData.edges)
+        .enter()
+        .append('line')
+        .attr('class', 'graph-link');
+    
+    // Create nodes
+    const node = g.selectAll('.graph-node')
+        .data(graphData.nodes)
+        .enter()
+        .append('g')
+        .attr('class', 'node-group')
+        .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded));
+    
+    // Add circles
+    node.append('circle')
+        .attr('class', 'graph-node')
+        .attr('r', function(d) { return getNodeRadius(d.difficulty || 'Beginner'); })
+        .attr('fill', function(d) { return getNodeColor(d); })
+        .on('click', function(event, d) {
+            selectNode(d);
+            showNodeInfo(d);
+        });
+    
+    // Add labels with enhanced styling
+    node.append('text')
+        .attr('class', 'node-label')
+        .attr('dy', function(d) { return getNodeRadius(d.difficulty) + 15; })
+        .text(function(d) {
+            if (!d.name) return '';
+            return d.name.length > 12 ? d.name.substring(0, 12) + '...' : d.name;
+        })
+        .style('font-weight', function(d) { return d.completed ? 'bold' : 'normal'; })
+        .style('fill', function(d) { return d.completed ? '#28a745' : '#333'; });
+    
+    // Add AI recommendation indicators
+    node.filter(function(d) { return d.ai_recommended; })
+        .append('circle')
+        .attr('class', 'ai-indicator')
+        .attr('r', 8)
+        .attr('cx', function(d) { return getNodeRadius(d.difficulty) + 10; })
+        .attr('cy', function(d) { return -getNodeRadius(d.difficulty) - 5; })
+        .attr('fill', '#ff6b35')
+        .append('title')
+        .text('AI Recommended');
+    
+    // Add mastery level indicators
+    node.append('circle')
+        .attr('class', 'mastery-ring')
+        .attr('r', function(d) { return getNodeRadius(d.difficulty) + 3; })
+        .attr('fill', 'none')
+        .attr('stroke', function(d) { return getMasteryColor(d.mastery_score || 0); })
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', function(d) {
+            const circumference = 2 * Math.PI * (getNodeRadius(d.difficulty) + 3);
+            const progress = (d.mastery_score || 0) / 100;
+            return `${circumference * progress} ${circumference}`;
+        });
+    
+    // Update positions
+    simulation.on('tick', function() {
+        link
+            .attr('x1', function(d) { return d.source.x; })
+            .attr('y1', function(d) { return d.source.y; })
+            .attr('x2', function(d) { return d.target.x; })
+            .attr('y2', function(d) { return d.target.y; });
+        
+        node
+            .attr('transform', function(d) { return `translate(${d.x},${d.y})`; });
+    });
+}
+
+function getNodeRadius(difficulty) {
+    switch(difficulty) {
+        case 'Beginner': return 20;
+        case 'Intermediate': return 25;
+        case 'Advanced': return 30;
+        default: return 22;
+    }
+}
+
+function getNodeColor(node) {
+    if (!node) return '#6c757d';
+    if (node.completed) return '#28a745';
+    if (node.ai_recommended) return '#ff6b35';
+    
+    switch(node.difficulty) {
+        case 'Beginner': return '#007bff';
+        case 'Intermediate': return '#ffc107';
+        case 'Advanced': return '#dc3545';
+        default: return '#6c757d';
+    }
+}
+
+function getMasteryColor(masteryScore) {
+    if (masteryScore >= 80) return '#28a745';
+    if (masteryScore >= 60) return '#ffc107';
+    if (masteryScore >= 40) return '#fd7e14';
+    return '#dc3545';
+}
+
+function selectNode(selectedNode) {
+    svg.selectAll('.graph-node').classed('selected', false);
+    svg.selectAll('.graph-node')
+        .filter(d => d.id === selectedNode.id)
+        .classed('selected', true);
+}
+
+function showNodeInfo(node) {
+    const info = document.getElementById('node-info');
+    const masteryScore = node.mastery_score || 0;
+    const aiRecommended = node.ai_recommended ? '<span class="badge bg-warning ms-2">🤖 AI Pick</span>' : '';
+    
+    info.innerHTML = `
+        <h6>${node.name} ${aiRecommended}</h6>
+        <p><span class="badge bg-secondary">${node.difficulty}</span></p>
+        
+        <!-- Mastery Progress -->
+        <div class="mb-2">
+            <small class="text-muted">Mastery Level</small>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar" style="width: ${masteryScore}%; background-color: ${getMasteryColor(masteryScore)}">
+                </div>
+            </div>
+            <small class="text-muted">${masteryScore}%</small>
+        </div>
+        
+        <!-- Status -->
+        <p class="small">${node.completed ? 
+            '<i class="fas fa-check text-success"></i> Completed' : 
+            '<i class="far fa-circle text-muted"></i> Not started'}</p>
+        
+        <!-- AI Insights -->
+        ${node.ai_recommended ? 
+            '<div class="alert alert-info alert-sm p-2 mb-2"><small>🤖 AI suggests this concept next based on your learning pattern!</small></div>' : ''}
+        
+        <!-- Actions -->
+        <button class="btn btn-primary btn-sm w-100 mb-1" onclick="goToConcept('${node.id}')">
+            <i class="fas fa-arrow-right me-1"></i>Study Concept
+        </button>
+        
+        ${!node.completed ? 
+            `<button class="btn btn-success btn-sm w-100 mb-1" onclick="markComplete('${node.id}')">
+                <i class="fas fa-check me-1"></i>Mark Complete
+            </button>` : ''}
+        
+        <button class="btn btn-outline-info btn-sm w-100 mb-1" onclick="getAIHelp('${node.id}')">
+            <i class="fas fa-robot me-1"></i>AI Study Tips
+        </button>
+        
+        <button class="btn btn-outline-warning btn-sm w-100" onclick="startCollaborativeStudy('${node.id}')">
+            <i class="fas fa-users me-1"></i>Study Together
+        </button>
+    `;
+}
+
+function goToConcept(conceptId) {
+    window.location.href = `/course/concept/${conceptId}`;
+}
+
+function markComplete(conceptId) {
+    fetch(`/api/concept/${conceptId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update node color
+            graphData.nodes.find(n => n.id === conceptId).completed = true;
+            renderGraph();
+            showAlert('Concept marked as complete!', 'success');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function resetGraph() {
+    if (simulation) {
+        simulation.alpha(1).restart();
+    }
+}
+
+function centerGraph() {
+    const transform = d3.zoomIdentity.translate(width / 2, height / 2).scale(1);
+    svg.transition().duration(750).call(
+        d3.zoom().transform, transform
+    );
+}
+
+function truncateText(text, maxLength) {
+    if (!text || typeof text !== 'string') return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => alert.remove(), 3000);
+}
+
+// Advanced AI and Collaboration Functions
+function getAIHelp(conceptId) {
+    fetch(`/api/personalized-content/${conceptId}`)
+        .then(response => response.json())
+        .then(data => {
+            showAIHelpModal(data);
+        })
+        .catch(error => {
+            console.error('Error getting AI help:', error);
+            showAlert('Error getting AI help', 'danger');
+        });
+}
+
+function showAIHelpModal(content) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-robot me-2"></i>AI Study Assistant</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Personalized Explanation</h6>
+                        <p>${content.explanation || 'AI-powered explanation coming soon!'}</p>
+                    </div>
+                    
+                    <h6><i class="fas fa-tips me-2"></i>Study Tips for You:</h6>
+                    <ul class="list-group list-group-flush">
+                        ${(content.study_tips || ['Take notes', 'Practice problems', 'Review regularly']).map(tip => 
+                            `<li class="list-group-item"><i class="fas fa-check text-success me-2"></i>${tip}</li>`
+                        ).join('')}
+                    </ul>
+                    
+                    <div class="mt-3">
+                        <h6><i class="fas fa-chart-line me-2"></i>Recommended Practice:</h6>
+                        <p class="text-muted">${content.practice_type || 'Interactive exercises'}</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="startPersonalizedPractice()">Start Practice</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', () => {
+        modal.remove();
+    });
+}
+
+function startCollaborativeStudy(conceptId) {
+    // Check for available study groups
+    fetch('/api/study-groups')
+        .then(response => response.json())
+        .then(groups => {
+            if (groups.length === 0) {
+                showAlert('No study groups available. Create one first!', 'info');
+                return;
+            }
+            
+            showCollaborativeStudyModal(conceptId, groups);
+        })
+        .catch(error => {
+            console.error('Error loading study groups:', error);
+            showAlert('Error loading study groups', 'danger');
+        });
+}
+
+function showCollaborativeStudyModal(conceptId, groups) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-users me-2"></i>Collaborative Study</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Choose a study group to start collaborative learning:</p>
+                    <div class="list-group">
+                        ${groups.map(group => `
+                            <button class="list-group-item list-group-item-action" onclick="joinCollaborativeSession('${group.id}', '${conceptId}')">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">${group.name}</h6>
+                                    <small>${group.member_count}/${group.max_members} members</small>
+                                </div>
+                                <p class="mb-1">${group.description || 'Study together and learn faster!'}</p>
+                            </button>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-outline-primary w-100" onclick="createNewStudyGroup('${conceptId}')">
+                            <i class="fas fa-plus me-2"></i>Create New Study Group
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', () => {
+        modal.remove();
+    });
+}
+
+function joinCollaborativeSession(groupId, conceptId) {
+    // Start collaborative session
+    fetch('/api/start-collaborative-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, concept_id: conceptId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.session_id) {
+            showAlert('Collaborative session started! 🎉', 'success');
+            // In a real implementation, this would open a collaborative interface
+            setTimeout(() => {
+                window.open(`/collaborate/session/${data.session_id}`, '_blank');
+            }, 1000);
+        } else {
+            showAlert('Error starting session', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error starting session:', error);
+        showAlert('Error starting collaborative session', 'danger');
+    });
+}
+
+function createNewStudyGroup(conceptId) {
+    const groupName = prompt('Enter study group name:');
+    if (!groupName) return;
+    
+    const groupDescription = prompt('Enter description (optional):') || `Study group for ${conceptId}`;
+    
+    fetch('/api/create-study-group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: groupName,
+            description: groupDescription,
+            max_members: 10,
+            is_public: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Study group created! 🎉', 'success');
+            // Start session with new group
+            joinCollaborativeSession(data.group_id, conceptId);
+        } else {
+            showAlert('Error creating study group', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error creating study group:', error);
+        showAlert('Error creating study group', 'danger');
+    });
+}
+
+function startPersonalizedPractice() {
+    showAlert('Personalized practice mode activated! 🚀', 'success');
+    // In a real implementation, this would start an AI-guided practice session
+}
+
+// Enhanced graph loading with AI recommendations
+function loadGraphData() {
+    console.log('Starting to load graph data...');
+    
+    fetch('/api/graph')
+        .then(response => {
+            console.log('Graph API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(graphData => {
+            console.log('Raw graph data received:', graphData);
+            
+            if (!graphData) {
+                throw new Error('Graph data is null or undefined');
+            }
+            
+            if (!graphData.nodes) {
+                console.warn('No nodes in graph data, creating empty array');
+                graphData.nodes = [];
+            }
+            
+            if (!graphData.edges) {
+                console.warn('No edges in graph data, creating empty array');
+                graphData.edges = [];
+            }
+            
+            if (!Array.isArray(graphData.nodes)) {
+                throw new Error('Graph nodes is not an array');
+            }
+            
+            if (!Array.isArray(graphData.edges)) {
+                throw new Error('Graph edges is not an array');
+            }
+            
+            console.log(`Graph loaded: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
+            
+            // Filter out invalid nodes
+            graphData.nodes = graphData.nodes.filter(node => 
+                node && node.id && node.name && node.difficulty
+            );
+            
+            console.log(`After filtering: ${graphData.nodes.length} valid nodes`);
+            
+            if (graphData.nodes.length === 0) {
+                document.getElementById('graph-container').innerHTML = 
+                    '<div class="text-center p-5"><p class="text-warning">No valid concepts found. Please check your database.</p></div>';
+                return;
+            }
+            
+            // Enhance nodes with AI recommendations and mastery scores
+            graphData.nodes = graphData.nodes.map((node, index) => ({
+                ...node,
+                ai_recommended: index < 2, // First 2 nodes are AI recommended
+                mastery_score: Math.floor(Math.random() * 100) // Simulate mastery scores
+            }));
+            
+            // Store globally
+            window.graphData = graphData;
+            
+            // Load AI recommendations in parallel (optional)
+            fetch('/api/ai-recommendations')
+                .then(r => r.json())
+                .then(aiData => {
+                    console.log('AI recommendations loaded:', aiData);
+                    // Could enhance nodes further with AI data here
+                })
+                .catch(error => {
+                    console.log('AI recommendations not available:', error.message);
+                });
+            
+            // Render the graph
+            renderGraph();
+        })
+        .catch(error => {
+            console.error('Error loading graph data:', error);
+            document.getElementById('graph-container').innerHTML = 
+                `<div class="text-center p-5">
+                    <p class="text-danger">Error loading graph data: ${error.message}</p>
+                    <button class="btn btn-primary" onclick="loadGraphData()">
+                        <i class="fas fa-refresh me-1"></i>Retry
+                    </button>
+                </div>`;
+        });
+}
+
+// Drag functions
+function dragStarted(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+}
+
+function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+}
+
+function dragEnded(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+}
+</script>
+{% endblock %}

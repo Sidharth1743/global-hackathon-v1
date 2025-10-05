@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Concepts - Neo4j Learning Platform{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="fas fa-book me-2"></i>MIT Statistics Concepts</h1>
+        <p class="text-muted">Explore all concepts in the course. Click to learn more about each topic.</p>
+    </div>
+</div>
+
+<div class="row">
+    {% for concept in concepts %}
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 concept-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{ concept.name }}</h6>
+                {% if concept.completed %}
+                    <i class="fas fa-check-circle text-success"></i>
+                {% else %}
+                    <i class="far fa-circle text-muted"></i>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    {% if concept.difficulty == 'Beginner' %}
+                        <span class="badge bg-primary">{{ concept.difficulty }}</span>
+                    {% elif concept.difficulty == 'Intermediate' %}
+                        <span class="badge bg-warning">{{ concept.difficulty }}</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ concept.difficulty }}</span>
+                    {% endif %}
+                </div>
+                
+                <p class="card-text small text-muted">
+                    Click to explore this concept and its relationships with other topics.
+                </p>
+                
+                {% if concept.completed %}
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" style="width: 100%">Completed</div>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('course.concept_detail', concept_id=concept.id) }}" 
+                       class="btn btn-primary btn-sm">
+                        <i class="fas fa-arrow-right me-1"></i>Explore Concept
+                    </a>
+                    {% if not concept.completed %}
+                    <button class="btn btn-success btn-sm" 
+                            onclick="markComplete('{{ concept.id }}')">
+                        <i class="fas fa-check me-1"></i>Mark Complete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function markComplete(conceptId) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+    button.disabled = true;
+    
+    fetch(`/api/concept/${conceptId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload(); // Refresh to show updated status
+        } else {
+            button.innerHTML = originalText;
+            button.disabled = false;
+            alert('Error updating progress');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        button.innerHTML = originalText;
+        button.disabled = false;
+        alert('Error updating progress');
+    });
+}
+</script>
+
+<style>
+.concept-card {
+    transition: transform 0.2s ease-in-out;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.concept-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

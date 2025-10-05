@@ -1,0 +1,684 @@
+{% extends "base.html" %}
+
+{% block title %}AI Learning Dashboard - Neo4j Learning Platform{% endblock %}
+
+{% block content %}
+<!-- AI-Powered Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-brain me-2 text-primary"></i>AI Learning Dashboard</h1>
+                <p class="text-muted">Welcome back, {{ session.user_name }}! Your AI learning companion is ready.</p>
+            </div>
+            <div class="text-end">
+                <div class="badge bg-success fs-6 me-2" id="ai-status">🤖 AI Active</div>
+                <div class="badge bg-info fs-6" id="learning-mode">Adaptive Mode</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-gradient-primary text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-trophy fa-2x mb-2"></i>
+                <h3 class="mb-1" id="user-level">-</h3>
+                <p class="mb-0">Level</p>
+                <div class="progress mt-2" style="height: 4px;">
+                    <div class="progress-bar bg-white" id="level-progress" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-gradient-success text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-fire fa-2x mb-2"></i>
+                <h3 class="mb-1" id="current-streak">-</h3>
+                <p class="mb-0">Day Streak</p>
+                <small id="streak-status">Keep it up!</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-gradient-warning text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-star fa-2x mb-2"></i>
+                <h3 class="mb-1" id="total-points">-</h3>
+                <p class="mb-0">XP Points</p>
+                <small id="points-today">+0 today</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-gradient-info text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-2x mb-2"></i>
+                <h3 class="mb-1" id="collaboration-score">-</h3>
+                <p class="mb-0">Collaboration</p>
+                <small id="helped-others">Helped 0 learners</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- AI Learning Assistant -->
+    <div class="col-md-8">
+        <!-- AI Recommendations -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-robot me-2"></i>AI Learning Assistant</h5>
+            </div>
+            <div class="card-body">
+                <div id="ai-recommendations">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">AI is analyzing your learning pattern...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Adaptive Learning Path -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-route me-2"></i>Personalized Learning Path</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="regeneratePath()">
+                        <i class="fas fa-sync me-1"></i>Regenerate
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="learning-path-container">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Generating your AI-optimized path...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Real-time Progress Analytics -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-area me-2"></i>Learning Analytics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="progressChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="masteryChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Achievements & Skill Trees -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-medal me-2"></i>Recent Achievements</h6>
+            </div>
+            <div class="card-body">
+                <div id="recent-achievements">
+                    <p class="text-muted small">Complete concepts to earn achievements!</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Skill Trees -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-tree me-2"></i>Skill Trees</h6>
+            </div>
+            <div class="card-body">
+                <div id="skill-trees">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Study Groups -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-users me-2"></i>Study Groups</h6>
+            </div>
+            <div class="card-body">
+                <div id="study-groups">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm w-100 mt-2" onclick="createStudyGroup()">
+                    <i class="fas fa-plus me-1"></i>Create Group
+                </button>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-success btn-sm w-100 mb-2" onclick="startAISession()">
+                    <i class="fas fa-brain me-1"></i>AI Study Session
+                </button>
+                <a href="{{ url_for('graph_view') }}" class="btn btn-primary btn-sm w-100 mb-2">
+                    <i class="fas fa-sitemap me-1"></i>Knowledge Graph
+                </a>
+                <button class="btn btn-warning btn-sm w-100 mb-2" onclick="joinCollaborativeSession()">
+                    <i class="fas fa-handshake me-1"></i>Join Study Session
+                </button>
+                <button class="btn btn-info btn-sm w-100" onclick="viewLeaderboard()">
+                    <i class="fas fa-trophy me-1"></i>Leaderboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div class="modal fade" id="aiSessionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-robot me-2"></i>AI Study Session</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="ai-session-content">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2">AI is preparing your personalized session...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary { background: linear-gradient(45deg, #007bff, #0056b3); }
+.bg-gradient-success { background: linear-gradient(45deg, #28a745, #1e7e34); }
+.bg-gradient-warning { background: linear-gradient(45deg, #ffc107, #e0a800); }
+.bg-gradient-info { background: linear-gradient(45deg, #17a2b8, #138496); }
+
+.achievement-badge {
+    transition: transform 0.2s;
+}
+.achievement-badge:hover {
+    transform: scale(1.05);
+}
+
+.skill-tree-item {
+    border-left: 3px solid #007bff;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let progressChart, masteryChart;
+let dashboardData = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDashboard();
+    setInterval(updateRealTimeData, 30000); // Update every 30 seconds
+});
+
+async function initializeDashboard() {
+    try {
+        await Promise.all([
+            loadUserStats(),
+            loadAIRecommendations(),
+            loadLearningPath(),
+            loadAchievements(),
+            loadSkillTrees(),
+            loadStudyGroups(),
+            initializeCharts()
+        ]);
+    } catch (error) {
+        console.error('Error initializing dashboard:', error);
+    }
+}
+
+async function loadUserStats() {
+    try {
+        // Use existing progress API for now
+        const response = await fetch('/api/progress');
+        const stats = await response.json();
+        
+        // Simulate gamification stats
+        const gamificationStats = {
+            level: Math.floor(stats.completed / 2) + 1,
+            total_points: stats.completed * 100,
+            current_streak: Math.floor(Math.random() * 7) + 1,
+            collaboration_score: Math.floor(Math.random() * 50),
+            xp: (stats.completed * 100) % 200,
+            xp_to_next_level: 200 - ((stats.completed * 100) % 200),
+            points_today: Math.floor(Math.random() * 200),
+            helped_others: Math.floor(Math.random() * 5)
+        };
+        
+        dashboardData.stats = { ...stats, ...gamificationStats };
+        updateStatsDisplay(dashboardData.stats);
+    } catch (error) {
+        console.error('Error loading user stats:', error);
+    }
+}
+
+function updateStatsDisplay(stats) {
+    document.getElementById('user-level').textContent = stats.level || 1;
+    document.getElementById('current-streak').textContent = stats.current_streak || 0;
+    document.getElementById('total-points').textContent = stats.total_points || 0;
+    document.getElementById('collaboration-score').textContent = stats.collaboration_score || 0;
+    
+    // Update progress bars and additional info
+    const levelProgress = ((stats.xp || 0) / (stats.xp_to_next_level + stats.xp || 1)) * 100;
+    document.getElementById('level-progress').style.width = levelProgress + '%';
+    
+    document.getElementById('points-today').textContent = `+${stats.points_today || 0} today`;
+    document.getElementById('helped-others').textContent = `Helped ${stats.helped_others || 0} learners`;
+    
+    if (stats.current_streak >= 7) {
+        document.getElementById('streak-status').textContent = 'On fire! 🔥';
+    } else if (stats.current_streak >= 3) {
+        document.getElementById('streak-status').textContent = 'Great momentum!';
+    }
+}
+
+async function loadAIRecommendations() {
+    try {
+        // Simulate AI recommendations
+        const recommendations = {
+            insight: "Your visual learning style shows 85% better retention with graph-based concepts!",
+            learning_style: "Visual",
+            optimal_pace: "Moderate",
+            next_study_time: "In 2 hours (optimal focus time)",
+            session_length: "25 minutes"
+        };
+        
+        displayAIRecommendations(recommendations);
+    } catch (error) {
+        console.error('Error loading AI recommendations:', error);
+        document.getElementById('ai-recommendations').innerHTML = 
+            '<p class="text-danger">Error loading AI recommendations</p>';
+    }
+}
+
+function displayAIRecommendations(recommendations) {
+    const container = document.getElementById('ai-recommendations');
+    
+    let html = `
+        <div class="alert alert-info">
+            <h6><i class="fas fa-lightbulb me-2"></i>AI Insights</h6>
+            <p class="mb-2">${recommendations.insight}</p>
+            <small>Learning Style: <strong>${recommendations.learning_style}</strong> | 
+                   Optimal Pace: <strong>${recommendations.optimal_pace}</strong></small>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock text-success fa-2x mb-2"></i>
+                        <h6>Next Study Time</h6>
+                        <p class="text-success">${recommendations.next_study_time}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <i class="fas fa-hourglass-half text-warning fa-2x mb-2"></i>
+                        <h6>Session Length</h6>
+                        <p class="text-warning">${recommendations.session_length}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+async function loadLearningPath() {
+    try {
+        const response = await fetch('/api/learning-path');
+        const path = await response.json();
+        
+        // Enhance with AI scoring
+        const enhancedPath = {
+            concepts: path.map((concept, index) => ({
+                ...concept,
+                ai_score: 4.5 - (index * 0.3),
+                estimated_time: 20 + (index * 5),
+                mastery_prediction: 0.9 - (index * 0.1)
+            }))
+        };
+        
+        displayLearningPath(enhancedPath);
+    } catch (error) {
+        console.error('Error loading learning path:', error);
+    }
+}
+
+function displayLearningPath(path) {
+    const container = document.getElementById('learning-path-container');
+    
+    if (!path.concepts || path.concepts.length === 0) {
+        container.innerHTML = '<p class="text-muted">Complete more concepts to get AI recommendations!</p>';
+        return;
+    }
+    
+    let html = '';
+    path.concepts.slice(0, 3).forEach((concept, index) => {
+        const difficultyColor = {
+            'Beginner': 'success',
+            'Intermediate': 'warning', 
+            'Advanced': 'danger'
+        }[concept.difficulty] || 'secondary';
+        
+        html += `
+            <div class="card mb-3 border-${difficultyColor}">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <span class="badge bg-${difficultyColor} rounded-pill">${index + 1}</span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${concept.name}</h6>
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-${difficultyColor} me-2">${concept.difficulty}</span>
+                                <small class="text-muted">⏱️ ${concept.estimated_time}min</small>
+                                <small class="text-muted ms-2">🎯 ${Math.round(concept.mastery_prediction * 100)}% success</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-${difficultyColor}" style="width: ${concept.ai_score * 20}%"></div>
+                            </div>
+                            <small class="text-muted">AI Recommendation Score: ${concept.ai_score.toFixed(1)}/5</small>
+                        </div>
+                        <div class="ms-3">
+                            <button class="btn btn-${difficultyColor} btn-sm" onclick="startConcept('${concept.id}')">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function loadAchievements() {
+    try {
+        // Simulate achievements
+        const achievements = {
+            recent: [
+                { name: '🚀 First Steps', points: 100 },
+                { name: '⚡ Speed Demon', points: 250 },
+                { name: '🔍 Knowledge Seeker', points: 300 }
+            ]
+        };
+        
+        displayAchievements(achievements);
+    } catch (error) {
+        console.error('Error loading achievements:', error);
+    }
+}
+
+function displayAchievements(achievements) {
+    const container = document.getElementById('recent-achievements');
+    
+    if (!achievements.recent || achievements.recent.length === 0) {
+        container.innerHTML = '<p class="text-muted small">Complete concepts to earn achievements!</p>';
+        return;
+    }
+    
+    let html = '';
+    achievements.recent.slice(0, 3).forEach(achievement => {
+        html += `
+            <div class="achievement-badge d-flex align-items-center mb-2 p-2 bg-light rounded">
+                <div class="me-2">${achievement.name.split(' ')[0]}</div>
+                <div class="flex-grow-1">
+                    <small class="fw-bold">${achievement.name.substring(2)}</small>
+                    <br><small class="text-muted">+${achievement.points} XP</small>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function loadSkillTrees() {
+    try {
+        // Simulate skill trees
+        const skillTrees = {
+            statistics_fundamentals: {
+                name: 'Statistics Fundamentals',
+                icon: '📊',
+                current_level_name: 'Apprentice',
+                progress_to_next: 65
+            },
+            learning_efficiency: {
+                name: 'Learning Efficiency',
+                icon: '⚡',
+                current_level_name: 'Focused',
+                progress_to_next: 40
+            },
+            collaboration_master: {
+                name: 'Collaboration Master',
+                icon: '🤝',
+                current_level_name: 'Helper',
+                progress_to_next: 20
+            }
+        };
+        
+        displaySkillTrees(skillTrees);
+    } catch (error) {
+        console.error('Error loading skill trees:', error);
+    }
+}
+
+function displaySkillTrees(skillTrees) {
+    const container = document.getElementById('skill-trees');
+    
+    let html = '';
+    Object.entries(skillTrees).forEach(([treeId, tree]) => {
+        html += `
+            <div class="skill-tree-item mb-3">
+                <div class="d-flex align-items-center mb-1">
+                    <span class="me-2">${tree.icon}</span>
+                    <small class="fw-bold">${tree.name}</small>
+                </div>
+                <div class="progress mb-1" style="height: 4px;">
+                    <div class="progress-bar" style="width: ${tree.progress_to_next}%"></div>
+                </div>
+                <small class="text-muted">${tree.current_level_name}</small>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function loadStudyGroups() {
+    try {
+        // Simulate study groups
+        const groups = [
+            { id: '1', name: 'Statistics Masters', member_count: 8, max_members: 10, is_member: false },
+            { id: '2', name: 'Probability Pros', member_count: 5, max_members: 8, is_member: true }
+        ];
+        
+        displayStudyGroups(groups);
+    } catch (error) {
+        console.error('Error loading study groups:', error);
+    }
+}
+
+function displayStudyGroups(groups) {
+    const container = document.getElementById('study-groups');
+    
+    if (!groups || groups.length === 0) {
+        container.innerHTML = '<p class="text-muted small">No study groups yet. Create one!</p>';
+        return;
+    }
+    
+    let html = '';
+    groups.slice(0, 2).forEach(group => {
+        html += `
+            <div class="d-flex align-items-center mb-2 p-2 bg-light rounded">
+                <div class="flex-grow-1">
+                    <small class="fw-bold">${group.name}</small>
+                    <br><small class="text-muted">${group.member_count}/${group.max_members} members</small>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" onclick="joinGroup('${group.id}')">
+                    ${group.is_member ? 'View' : 'Join'}
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function initializeCharts() {
+    // Progress Chart
+    const progressCtx = document.getElementById('progressChart').getContext('2d');
+    progressChart = new Chart(progressCtx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Concepts Completed',
+                data: [1, 2, 1, 3, 2, 1, 4],
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    
+    // Mastery Chart
+    const masteryCtx = document.getElementById('masteryChart').getContext('2d');
+    masteryChart = new Chart(masteryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Beginner', 'Intermediate', 'Advanced'],
+            datasets: [{
+                data: [5, 3, 1],
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+// Action Functions
+function startAISession() {
+    const modal = new bootstrap.Modal(document.getElementById('aiSessionModal'));
+    modal.show();
+    
+    // Simulate AI session content
+    setTimeout(() => {
+        document.getElementById('ai-session-content').innerHTML = `
+            <div class="text-center mb-4">
+                <h4>🤖 Personalized AI Study Session</h4>
+                <p class="text-muted">Optimized for your learning style: <strong>Visual</strong></p>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5>Random Variables</h5>
+                            <p class="text-muted">Intermediate</p>
+                            <button class="btn btn-primary" onclick="startConcept('random_vars')">
+                                Start Learning
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>AI Study Tips:</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success me-2"></i>Create mind maps and flowcharts</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Use color-coded notes</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Draw concept relationships</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Watch video demonstrations</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+    }, 1500);
+}
+
+function startConcept(conceptId) {
+    window.location.href = `/course/concept/${conceptId}`;
+}
+
+function regeneratePath() {
+    document.getElementById('learning-path-container').innerHTML = 
+        '<div class="text-center"><div class="spinner-border text-primary"></div><p class="mt-2">Regenerating path...</p></div>';
+    
+    setTimeout(() => loadLearningPath(), 2000);
+}
+
+function createStudyGroup() {
+    alert('Study group creation feature coming soon! 🚀');
+}
+
+function joinCollaborativeSession() {
+    alert('Collaborative sessions feature coming soon! 🤝');
+}
+
+function viewLeaderboard() {
+    alert('Leaderboard feature coming soon! 🏆');
+}
+
+function joinGroup(groupId) {
+    alert(`Joining group ${groupId}... Feature coming soon! 👥`);
+}
+
+async function updateRealTimeData() {
+    try {
+        await loadUserStats();
+    } catch (error) {
+        console.error('Error updating real-time data:', error);
+    }
+}
+</script>
+{% endblock %}
