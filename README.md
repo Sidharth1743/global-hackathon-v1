@@ -1,7 +1,5 @@
 # 🧠 AI-Powered Graph-Based Learning Platform
 
-## 🏆 **HACKATHON WINNER FEATURES** 🏆
-
 Transform traditional linear learning into an **AI-driven, collaborative, gamified experience** that mirrors how the brain actually learns through interconnected knowledge networks.
 
 ---
